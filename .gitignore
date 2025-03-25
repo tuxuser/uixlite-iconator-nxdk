@@ -1,0 +1,11 @@
+.vscode
+bin
+build
+linux_build
+CMakeFiles
+CMakeCache.txt
+*.d
+*.obj
+*.exe
+*.iso
+*.inl

@@ -1,0 +1,39 @@
+name: Build
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.images/*'
+      - 'LICENSE'
+      - '.gitignore'
+      - '*.md'
+    branches: [ main ]
+  push:
+    paths-ignore:
+      - '.images/*'
+      - 'LICENSE'
+      - '.gitignore'
+      - '*.md'
+    branches: [ main ]
+
+jobs:
+  xbox:
+    runs-on: ubuntu-latest
+    container:
+      image: xboxdev/nxdk:latest
+      volumes:
+        - ${{ github.workspace }}:/volume_mount
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    - name: Compile
+      run: |
+        eval $(/usr/src/nxdk/bin/activate -s)
+        make
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Xbox Binaries
+        path: |
+          iconator.iso
+          bin
