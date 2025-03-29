@@ -1,0 +1,3 @@
+[submodule "external/UIX-Lite"]
+	path = external/UIX-Lite
+	url = https://github.com/OfficialTeamUIX/UIX-Lite
