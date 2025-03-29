@@ -20,6 +20,7 @@ struct DriveMapping {
 // Map Xbox device paths to drive letters
 static const DriveMapping DRIVE_MAPPINGS[] = {
     // HDD0
+    {"\\Device\\Harddisk0\\Partition2", 'C', true},
     {"\\Device\\Harddisk0\\Partition1", 'E', true},
     {"\\Device\\Harddisk0\\Partition6", 'F', false},
     {"\\Device\\Harddisk0\\Partition7", 'G', false},
@@ -69,11 +70,13 @@ void FindDefaultXBE(const std::string& path, std::vector<GameInfo>& games) {
                     parser.ExtractTitleImage(game.title_image);
 
                     games.push_back(game);
+                    /*
                     debugPrint("Found game: %s (Title ID: %08X)\n", 
                              game.title.c_str(), 
                              game.title_id);
                     debugPrint("Title image: %zu bytes\n",
                              game.title_image.size());
+                    */
                 }
             }
         }
@@ -96,29 +99,35 @@ std::string GetDirectoryName(const std::string& fullPath) {
 }
 
 void SaveIconsIni(const std::vector<GameInfo>& games, std::string path) {
-    std::ofstream f(path);
-    if (!f) return;
+    std::ofstream f(path, std::ios::trunc);
+    if (!f.is_open()) {
+        debugPrint("Failed to open %s for writing!\n", path.c_str());
+        return;
+    }
     
-    f << "[default]\n";
+    f << "[default]\r\n";
     for (const auto& game : games) {
         std::string dirName = GetDirectoryName(game.xbe_path);
         if (!dirName.empty()) {
             f << dirName << "=" << std::hex << std::uppercase 
               << std::setfill('0') << std::setw(8) 
-              << game.title_id << "\n";
+              << game.title_id << "\r\n";
         }
     }
 }
 
 void SaveTitleNamesIni(const std::vector<GameInfo>& games, std::string path) {
-    std::ofstream f(path);
-    if (!f) return;
+    std::ofstream f(path, std::ios::trunc);
+    if (!f.is_open()) {
+        debugPrint("Failed to open %s for writing!\n", path.c_str());
+        return;
+    }
     
-    f << "[default]\n";
+    f << "[default]\r\n";
     for (const auto& game : games) {
         std::string dirName = GetDirectoryName(game.xbe_path);
         if (!dirName.empty()) {
-            f << dirName << "=" << game.title << "\n";
+            f << dirName << "=" << game.title << "\r\n";
         }
     }
 }
@@ -137,6 +146,7 @@ void SaveTitleMeta(const std::vector<GameInfo>& games) {
         char metaFilePath[MAX_PATH];
         snprintf(metaFilePath, sizeof(metaFilePath), "%s\\TitleMeta.xbx", dirPath);
 
+        /*
         // Check if files already exist
         std::ifstream fMetaExists(metaFilePath);
         if (fMetaExists && fMetaExists.good()) {
@@ -146,13 +156,15 @@ void SaveTitleMeta(const std::vector<GameInfo>& games) {
             debugPrint("Title metadata already exists for %s, skipping...\n", game.title.c_str());
             continue;
         }
+        */
 
         // Write the title metadatadata
-        std::ofstream f(metaFilePath);
-        if (f) {
-            f << "TitleName=" << game.title << "\n";
-            debugPrint("Saved title meta for %s to %s\n", 
-                    game.title.c_str(), metaFilePath);
+        std::ofstream f(metaFilePath, std::ios::trunc);
+        if (f.is_open()) {
+            f << "TitleName=" << game.title << "\r\n";
+            // debugPrint("Saved title meta for %s to %s\n", game.title.c_str(), metaFilePath);
+        } else {
+            debugPrint("Failed opening %s for writing!\n", metaFilePath);
         }
     }
 }
@@ -186,7 +198,7 @@ void CopyTitleImages(const std::vector<GameInfo>& games) {
         //if (titleImageData.empty()) {
             // Read from local file instead
             char sourceIconPath[MAX_PATH];
-            snprintf(dirPath, sizeof(dirPath), "Q:\\Icons\\%08x", game.title_id);
+            snprintf(dirPath, sizeof(dirPath), "Q:\\Icons\\%08x.xbx", game.title_id);
 
             std::ifstream sourceIcon(sourceIconPath, std::ios::binary | std::ios::ate);
             if (!sourceIcon.is_open()) {
@@ -207,10 +219,11 @@ void CopyTitleImages(const std::vector<GameInfo>& games) {
         // Write the title image data
         std::ofstream f(imageFilePath, std::ios::binary | std::ios::trunc);
         if (f.is_open()) {
-            f.write(reinterpret_cast<const char*>(game.title_image.data()), 
-                game.title_image.size());
-            debugPrint("Saved title image for %s to %s\n", 
-                    game.title.c_str(), imageFilePath);
+            f.write(reinterpret_cast<const char*>(titleImageData.data()), 
+                titleImageData.size());
+            // debugPrint("Saved title image for %s to %s\n", game.title.c_str(), imageFilePath);
+        } else {
+            debugPrint("Failed opening %s for writing!\n", imageFilePath);
         }
     }
 }
@@ -237,6 +250,8 @@ int main(void) {
 
     XVideoSetMode(640, 480, 32, REFRESH_DEFAULT);
 
+    debugPrint(".: Iconator 4 UIX-Lite :.\n\n");
+
     if (!MountHome()) {
         debugPrint("Failed to mount home drive Q:\n");
         Sleep(5000);
@@ -261,31 +276,33 @@ int main(void) {
 
     // Search for games in each drive
     for (auto& driveLetter : vecDrives) {
+        debugPrint("Searching on drive %c...\n", driveLetter);
         for (auto& path : PATHS) {
             std::string scanPath = std::string(1, driveLetter) + ":\\" + path;
-            debugPrint("Searching in %s\n", scanPath.c_str());
+            // debugPrint("Searching in %s\n", scanPath.c_str());
             FindDefaultXBE(scanPath, titles);
         }
     }
 
-    debugPrint("\nFound %zu titles:\n", titles.size());
+    debugPrint("\nFound %zu titles\n", titles.size());
+
+    /*
     for (const auto& title : titles) {
         debugPrint("Path: %s\nTitle: %s\nTitle ID: %08X\n", 
                   title.xbe_path.c_str(),
                   title.title.c_str(),
                   title.title_id);
-        debugPrint("Title image: %zu bytes\n\n",
-                  title.title_image.size());
     }
+    */
 
     debugPrint("Copying title images...\n");
     CopyTitleImages(titles);
     debugPrint("Saving title metadata...\n");
     SaveTitleMeta(titles);
     debugPrint("Saving Icons.ini ...\n");
-    SaveIconsIni(titles, "E:\\Icons.ini");
+    SaveIconsIni(titles, "C:\\UIX Configs\\Icons.ini");
     debugPrint("Saving TitleNames.ini ...\n");
-    SaveTitleNamesIni(titles, "E:\\TitleNames.ini");
+    SaveTitleNamesIni(titles, "C:\\UIX Configs\\TitleNames.ini");
 
     debugPrint("Exiting in 10 seconds...");
     Sleep(10000);
