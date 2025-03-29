@@ -80,7 +80,7 @@ struct XBE_SECTION {
 
 struct GameInfo {
     std::string xbe_path;
-    std::string title_id;
+    uint32_t title_id;
     std::string title;
     std::vector<uint8_t> title_image;  // Raw title image data (xbx)
 };
@@ -91,7 +91,7 @@ public:
     ~XBEParser();
 
     bool LoadXBE(const std::string& filepath);
-    bool ExtractTitleID(std::string& title_id);
+    bool ExtractTitleID(uint32_t& title_id);
     bool ExtractTitle(std::string& title);
     bool ExtractTitleImage(std::vector<uint8_t>& image_data);
     bool GetSectionByName(const std::string& name, XBE_SECTION& section);

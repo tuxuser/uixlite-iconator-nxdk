@@ -106,16 +106,12 @@ bool XBEParser::GetSectionByName(const std::string& name, XBE_SECTION& section) 
     return false;
 }
 
-bool XBEParser::ExtractTitleID(std::string& title_id) {
+bool XBEParser::ExtractTitleID(uint32_t& title_id) {
     if (!xbe_data) {
         return false;
     }
-
-    std::stringstream ss;
-    ss << std::hex << std::uppercase << std::setfill('0') << std::setw(8) 
-       << certificate.title_id;
     
-    title_id = ss.str();
+    title_id = certificate.title_id;
     return true;
 }
 
