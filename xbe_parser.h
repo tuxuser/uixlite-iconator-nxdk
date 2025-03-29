@@ -103,6 +103,10 @@ private:
     size_t xbe_size;
     std::vector<XBE_SECTION> sections;
 
+    uint32_t Offset(uint32_t offset) {
+        return offset - header.base_address;
+    }
+
     bool ReadXBE();
     bool ReadCertificate();
     bool ReadSections();

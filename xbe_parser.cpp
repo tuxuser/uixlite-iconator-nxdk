@@ -48,19 +48,19 @@ bool XBEParser::ReadXBE() {
 }
 
 bool XBEParser::ReadCertificate() {
-    if (!xbe_data || header.certificate_address >= xbe_size) {
+    if (!xbe_data || Offset(header.certificate_address) >= xbe_size) {
         return false;
     }
 
     memcpy(&certificate, 
-           xbe_data + header.certificate_address, 
+           xbe_data + Offset(header.certificate_address),
            sizeof(XBE_CERTIFICATE));
 
     return true;
 }
 
 bool XBEParser::ReadSections() {
-    if (!xbe_data || header.section_headers_address >= xbe_size) {
+    if (!xbe_data || Offset(header.section_headers_address) >= xbe_size) {
         return false;
     }
 
@@ -70,7 +70,7 @@ bool XBEParser::ReadSections() {
     // Read each section header
     for (uint32_t i = 0; i < header.number_of_sections; i++) {
         XBE_SECTION section;
-        uint32_t section_offset = header.section_headers_address + (i * sizeof(XBE_SECTION));
+        uint32_t section_offset = Offset(header.section_headers_address) + (i * sizeof(XBE_SECTION));
         
         if (section_offset + sizeof(XBE_SECTION) > xbe_size) {
             return false;
