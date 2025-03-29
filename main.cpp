@@ -121,9 +121,41 @@ void SaveTitleNamesIni(const std::vector<GameInfo>& games, std::string path) {
     }
 }
 
+void SaveTitleMeta(const std::vector<GameInfo>& games) {
+    for (const auto& game : games) {
+        if (game.title.empty()) continue;
+        
+        // Create directory path in format "E:\UDATA\XXXXXXXX\"
+        char dirPath[MAX_PATH];
+        snprintf(dirPath, sizeof(dirPath), "E:\\UDATA\\%08X", game.title_id);
+        
+        // Create the directory
+        CreateDirectory(dirPath, NULL);
+        
+        char metaFilePath[MAX_PATH];
+        snprintf(metaFilePath, sizeof(metaFilePath), "%s\\TitleMeta.xbx", dirPath);
+
+        // Check if files already exist
+        std::ifstream fMetaExists(metaFilePath);
+        if (fMetaExists && fMetaExists.good()) {
+            if (fMetaExists)
+                fMetaExists.close();
+
+            debugPrint("Title metadata already exists for %s, skipping...\n", game.title.c_str());
+            continue;
+        }
+
+        // Write the title metadatadata
+        std::ofstream f(metaFilePath);
+        if (f) {
+            f << "TitleName=" << game.title << "\n";
+            debugPrint("Saved title meta for %s to %s\n", 
+                    game.title.c_str(), metaFilePath);
+        }
+    }
+}
+
 void CopyTitleImages(const std::vector<GameInfo>& games) {
-    CreateDirectory("E:\\UDATA", NULL);
-    
     for (const auto& game : games) {
         if (game.title_image.empty()) continue;
         
@@ -134,24 +166,27 @@ void CopyTitleImages(const std::vector<GameInfo>& games) {
         // Create the directory
         CreateDirectory(dirPath, NULL);
         
-        // Create full file path
-        char filePath[MAX_PATH];
-        snprintf(filePath, sizeof(filePath), "%s\\TitleImage.xbx", dirPath);
-        
-        // Check if file already exists
-        std::ifstream fexists(filePath);
-        if (fexists.good()) {
-            debugPrint("Title image already exists for %s, skipping...\n", game.title.c_str());
+        // Create full file paths
+        char imageFilePath[MAX_PATH];
+        snprintf(imageFilePath, sizeof(imageFilePath), "%s\\TitleImage.xbx", dirPath);
+
+        // Check if files already exist
+        std::ifstream fImageExists(imageFilePath);
+        if (fImageExists && fImageExists.good()) {
+            if (fImageExists)
+                fImageExists.close();
+
+            debugPrint("Title image/icon already exist for %s, skipping...\n", game.title.c_str());
             continue;
         }
-        
+
         // Write the title image data
-        std::ofstream f(filePath, std::ios::binary);
+        std::ofstream f(imageFilePath, std::ios::binary);
         if (f) {
             f.write(reinterpret_cast<const char*>(game.title_image.data()), 
-                   game.title_image.size());
+                game.title_image.size());
             debugPrint("Saved title image for %s to %s\n", 
-                      game.title.c_str(), filePath);
+                    game.title.c_str(), imageFilePath);
         }
     }
 }
@@ -200,6 +235,8 @@ int main(void)
 
     debugPrint("Copying title images...\n");
     CopyTitleImages(titles);
+    debugPrint("Saving title metadata...\n");
+    SaveTitleMeta(titles);
     debugPrint("Saving Icons.ini ...\n");
     SaveIconsIni(titles, "E:\\Icons.ini");
     debugPrint("Saving TitleNames.ini ...\n");
