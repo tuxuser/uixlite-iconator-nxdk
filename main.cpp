@@ -9,6 +9,32 @@
 #include <string>
 #include <vector>
 
+struct DriveMapping {
+    const char* devicePath;
+    const char driveLetter;
+    bool fatal;
+};
+
+// Map Xbox device paths to drive letters
+static const DriveMapping DRIVE_MAPPINGS[] = {
+    // HDD0
+    {"\\Device\\Harddisk0\\Partition1", 'E', true},
+    {"\\Device\\Harddisk0\\Partition6", 'F', false},
+    {"\\Device\\Harddisk0\\Partition7", 'G', false},
+    // HDD1
+    {"\\Device\\Harddisk1\\Partition1", 'H', false},
+    {"\\Device\\Harddisk1\\Partition6", 'I', false},
+    {"\\Device\\Harddisk1\\Partition7", 'J', false},
+};
+
+static const std::string PATHS[] = {
+    "Apps",
+    "Dashboards"
+    "Games",
+    "Emulators",
+    "Homebrew"
+};
+
 void FindDefaultXBE(const std::string& path, std::vector<GameInfo>& games) {
     WIN32_FIND_DATA findFileData;
     HANDLE hFind;
@@ -53,53 +79,44 @@ void FindDefaultXBE(const std::string& path, std::vector<GameInfo>& games) {
 
 int main(void)
 {
-    std::vector<std::string> vecDrives;
-    std::vector<GameInfo> games;
+    std::vector<char> vecDrives;
+    std::vector<GameInfo> titles;
+    bool success = false;
 
     XVideoSetMode(640, 480, 32, REFRESH_DEFAULT);
 
-    // Mount E:
-    BOOL ret = nxMountDrive('E', "\\Device\\Harddisk0\\Partition1\\");
-    if (!ret) {
-        debugPrint("Failed to mount E: drive!\n");
-        Sleep(5000);
-        return 1;
-    }
-    vecDrives.push_back("E");
-
-    ret = nxMountDrive('F', "\\Device\\Harddisk0\\Partition6\\");
-    if (!ret) {
-        debugPrint("Failed to mount F: drive!\n");
-    } else {
-        vecDrives.push_back("F");
-    }
-
-    ret = nxMountDrive('G', "\\Device\\Harddisk0\\Partition7\\");
-    if (!ret) {
-        debugPrint("Failed to mount G: drive!\n");
-    } else {
-        vecDrives.push_back("G");
+    for (const auto& mountPoint : DRIVE_MAPPINGS) {
+        success = nxMountDrive(mountPoint.driveLetter, mountPoint.devicePath);
+        if (!success && mountPoint.fatal) {
+            debugPrint("Failed to mount %c from drive '%s'!\n", mountPoint.driveLetter, mountPoint.devicePath);
+            Sleep(5000);
+            return 1;
+        } else if (success) {
+            vecDrives.push_back(mountPoint.driveLetter);
+        }
     }
 
     debugPrint("Enumerated drives:\n");
     for (auto& driveLetter : vecDrives) {
-        debugPrint("%s:\\\n", driveLetter.c_str());
+        debugPrint("%c:\\\n", driveLetter);
     }
 
     // Search for games in each drive
     for (auto& driveLetter : vecDrives) {
-        std::string games_path = driveLetter + ":\\Games";
-        FindDefaultXBE(games_path, games);
+        for (auto& path : PATHS) {
+            std::string scanPath = std::string(1, driveLetter) + ":\\" + path;
+            FindDefaultXBE(scanPath, titles);
+        }
     }
 
-    debugPrint("\nFound %zu games:\n", games.size());
-    for (const auto& game : games) {
+    debugPrint("\nFound %zu titles:\n", titles.size());
+    for (const auto& title : titles) {
         debugPrint("Path: %s\nTitle: %s\nTitle ID: %s\n", 
-                  game.xbe_path.c_str(),
-                  game.title.c_str(),
-                  game.title_id.c_str());
+                  title.xbe_path.c_str(),
+                  title.title.c_str(),
+                  title.title_id.c_str());
         debugPrint("Title image: %zu bytes\n\n",
-                  game.title_image.size());
+                  title.title_image.size());
     }
 
     while (1) {
