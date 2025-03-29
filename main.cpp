@@ -31,7 +31,7 @@ static const DriveMapping DRIVE_MAPPINGS[] = {
 
 static const std::string PATHS[] = {
     "Apps",
-    "Dashboards"
+    "Dashboards",
     "Games",
     "Emulators",
     "Homebrew"
@@ -40,9 +40,10 @@ static const std::string PATHS[] = {
 void FindDefaultXBE(const std::string& path, std::vector<GameInfo>& games) {
     WIN32_FIND_DATA findFileData;
     HANDLE hFind;
-    std::string search_path = path + "\\*\\*.*";
-    
-    hFind = FindFirstFile(search_path.c_str(), &findFileData);
+
+    std::string searchPath = path + "\\*.*";
+
+    hFind = FindFirstFile(searchPath.c_str(), &findFileData);
     if (hFind == INVALID_HANDLE_VALUE) {
         return;
     }
@@ -262,6 +263,7 @@ int main(void) {
     for (auto& driveLetter : vecDrives) {
         for (auto& path : PATHS) {
             std::string scanPath = std::string(1, driveLetter) + ":\\" + path;
+            debugPrint("Searching in %s\n", scanPath.c_str());
             FindDefaultXBE(scanPath, titles);
         }
     }
@@ -285,9 +287,8 @@ int main(void) {
     debugPrint("Saving TitleNames.ini ...\n");
     SaveTitleNamesIni(titles, "E:\\TitleNames.ini");
 
-    while (1) {
-        Sleep(2000);
-    }
+    debugPrint("Exiting in 10 seconds...");
+    Sleep(10000);
 
     return 0;
 }
