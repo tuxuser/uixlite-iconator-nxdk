@@ -172,18 +172,18 @@ void CopyTitleImages(const std::vector<GameInfo>& games) {
         char imageFilePath[MAX_PATH];
         snprintf(imageFilePath, sizeof(imageFilePath), "%s\\TitleImage.xbx", dirPath);
 
-        // Check if files already exist
+        /*
         std::ifstream fImageExists(imageFilePath);
-        if (fImageExists && fImageExists.good()) {
-            if (fImageExists)
-                fImageExists.close();
+        if (fImageExists.is_open() && fImageExists.good()) {
+            fImageExists.close();
 
             debugPrint("Title image/icon already exist for %s, skipping...\n", game.title.c_str());
             continue;
         }
+        */
 
-        std::vector<uint8_t> titleImageData = game.title_image;
-        if (titleImageData.empty()) {
+        std::vector<uint8_t> titleImageData; // = game.title_image;
+        //if (titleImageData.empty()) {
             // Read from local file instead
             char sourceIconPath[MAX_PATH];
             snprintf(dirPath, sizeof(dirPath), "Q:\\Icons\\%08x", game.title_id);
@@ -202,11 +202,11 @@ void CopyTitleImages(const std::vector<GameInfo>& games) {
             titleImageData.insert(titleImageData.begin(),
                std::istream_iterator<uint8_t>(sourceIcon),
                std::istream_iterator<uint8_t>());
-        }
+        //}
 
         // Write the title image data
-        std::ofstream f(imageFilePath, std::ios::binary);
-        if (f) {
+        std::ofstream f(imageFilePath, std::ios::binary | std::ios::trunc);
+        if (f.is_open()) {
             f.write(reinterpret_cast<const char*>(game.title_image.data()), 
                 game.title_image.size());
             debugPrint("Saved title image for %s to %s\n", 
