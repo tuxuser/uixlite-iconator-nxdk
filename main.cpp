@@ -2,6 +2,7 @@
 #include <string.h>
 #include <windows.h>
 #include <nxdk/mount.h>
+#include <nxdk/path.h>
 #include <hal/debug.h>
 #include <hal/video.h>
 #include <hal/xbox.h>
@@ -13,7 +14,7 @@
 struct DriveMapping {
     const char* devicePath;
     const char driveLetter;
-    bool fatal;
+    bool failFatal;
 };
 
 // Map Xbox device paths to drive letters
@@ -180,6 +181,28 @@ void CopyTitleImages(const std::vector<GameInfo>& games) {
             continue;
         }
 
+        std::vector<uint8_t> titleImageData = game.title_image;
+        if (titleImageData.empty()) {
+            // Read from local file instead
+            char sourceIconPath[MAX_PATH];
+            snprintf(dirPath, sizeof(dirPath), "Q:\\Icons\\%08x", game.title_id);
+
+            std::ifstream sourceIcon(sourceIconPath, std::ios::binary | std::ios::ate);
+            if (!sourceIcon.is_open()) {
+                debugPrint("Failed opening icon xbx from %s\n", sourceIconPath);
+                continue;
+            }
+
+            auto iconFileSize = sourceIcon.tellg();
+            sourceIcon.seekg(0, std::ios::beg);
+
+            // Read from local icon file into vec
+            titleImageData.reserve(iconFileSize);
+            titleImageData.insert(titleImageData.begin(),
+               std::istream_iterator<uint8_t>(sourceIcon),
+               std::istream_iterator<uint8_t>());
+        }
+
         // Write the title image data
         std::ofstream f(imageFilePath, std::ios::binary);
         if (f) {
@@ -191,20 +214,40 @@ void CopyTitleImages(const std::vector<GameInfo>& games) {
     }
 }
 
-int main(void)
+bool MountHome()
 {
+    // Slightly modified nxdk\automount_d.c
+    char targetPath[MAX_PATH];
+    nxGetCurrentXbeNtPath(targetPath);
+
+    // Cut off the XBE file name by inserting a null-terminator
+    char *filenameStr;
+    filenameStr = strrchr(targetPath, '\\');
+    assert(filenameStr != NULL);
+    *(filenameStr + 1) = '\0';
+
+    return nxMountDrive('Q', targetPath);
+}
+
+int main(void) {
     std::vector<char> vecDrives;
     std::vector<GameInfo> titles;
     bool success = false;
 
     XVideoSetMode(640, 480, 32, REFRESH_DEFAULT);
 
+    if (!MountHome()) {
+        debugPrint("Failed to mount home drive Q:\n");
+        Sleep(5000);
+        return 1;
+    }
+
     for (const auto& mountPoint : DRIVE_MAPPINGS) {
         success = nxMountDrive(mountPoint.driveLetter, mountPoint.devicePath);
-        if (!success && mountPoint.fatal) {
+        if (!success && mountPoint.failFatal) {
             debugPrint("Failed to mount %c from drive '%s'!\n", mountPoint.driveLetter, mountPoint.devicePath);
             Sleep(5000);
-            return 1;
+            return 2;
         } else if (success) {
             vecDrives.push_back(mountPoint.driveLetter);
         }
