@@ -109,7 +109,7 @@ void SaveIconsIni(const std::vector<GameInfo>& games, std::string path) {
     for (const auto& game : games) {
         std::string dirName = GetDirectoryName(game.xbe_path);
         if (!dirName.empty()) {
-            f << dirName << "=" << std::hex << std::uppercase 
+            f << dirName << "=" << std::hex
               << std::setfill('0') << std::setw(8) 
               << game.title_id << std::endl;
         }
@@ -138,7 +138,7 @@ void SaveTitleMeta(const std::vector<GameInfo>& games) {
         
         // Create directory path in format "E:\UDATA\XXXXXXXX\"
         char dirPath[MAX_PATH];
-        snprintf(dirPath, sizeof(dirPath), "E:\\UDATA\\%08X", game.title_id);
+        snprintf(dirPath, sizeof(dirPath), "E:\\UDATA\\%08x", game.title_id);
         
         // Create the directory
         CreateDirectory(dirPath, NULL);
