@@ -105,13 +105,13 @@ void SaveIconsIni(const std::vector<GameInfo>& games, std::string path) {
         return;
     }
     
-    f << "[default]\r\n";
+    f << "[default]" << std::endl;
     for (const auto& game : games) {
         std::string dirName = GetDirectoryName(game.xbe_path);
         if (!dirName.empty()) {
             f << dirName << "=" << std::hex << std::uppercase 
               << std::setfill('0') << std::setw(8) 
-              << game.title_id << "\r\n";
+              << game.title_id << std::endl;
         }
     }
 }
@@ -123,11 +123,11 @@ void SaveTitleNamesIni(const std::vector<GameInfo>& games, std::string path) {
         return;
     }
     
-    f << "[default]\r\n";
+    f << "[default]" << std::endl;
     for (const auto& game : games) {
         std::string dirName = GetDirectoryName(game.xbe_path);
         if (!dirName.empty()) {
-            f << dirName << "=" << game.title << "\r\n";
+            f << dirName << "=" << game.title << std::endl;
         }
     }
 }
@@ -161,7 +161,7 @@ void SaveTitleMeta(const std::vector<GameInfo>& games) {
         // Write the title metadatadata
         std::ofstream f(metaFilePath, std::ios::trunc);
         if (f.is_open()) {
-            f << "TitleName=" << game.title << "\r\n";
+            f << "TitleName=" << game.title << std::endl;
             // debugPrint("Saved title meta for %s to %s\n", game.title.c_str(), metaFilePath);
         } else {
             debugPrint("Failed opening %s for writing!\n", metaFilePath);
