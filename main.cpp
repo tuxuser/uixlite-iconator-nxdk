@@ -308,11 +308,15 @@ std::vector<std::string> LoadPathsFromConfig(const std::string& configPath) {
                 auto pathList = SplitString(value, ';');
                 for (const auto& path : pathList) {
                     // Check for duplicates (case-insensitive)
+                    bool isDuplicate = false;
                     for (const auto& existingPath : paths) {
-                        if (_stricmp(path.c_str(), existingPath.c_str()) != 0) {
-                            // New path
-                            paths.push_back(path);
+                        if (_stricmp(path.c_str(), existingPath.c_str()) == 0) {
+                            isDuplicate = true;
                         }
+                    }
+
+                    if (!isDuplicate) {
+                        paths.push_back(path);
                     }
                 }
             }
