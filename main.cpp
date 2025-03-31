@@ -236,16 +236,27 @@ bool MountHome()
     return nxMountDrive('Q', targetPath);
 }
 
+std::string Trim(const std::string& str) {
+    const std::string whitespace = " \t\r\n";
+    const auto start = str.find_first_not_of(whitespace);
+
+    if (start == std::string::npos) {
+        return ""; // String is all whitespace
+    }
+
+    const auto end = str.find_last_not_of(whitespace);
+    return str.substr(start, end - start + 1);
+}
+
 std::vector<std::string> SplitString(const std::string& str, char delimiter) {
     std::vector<std::string> tokens;
     std::string token;
     std::istringstream tokenStream(str);
-    
+
     while (std::getline(tokenStream, token, delimiter)) {
         // Trim whitespace
-        token.erase(0, token.find_first_not_of(" \t\r\n"));
-        token.erase(token.find_last_not_of(" \t\r\n") + 1);
-        
+        token = Trim(token);
+
         if (!token.empty()) {
             tokens.push_back(token);
         }
@@ -268,8 +279,7 @@ std::vector<std::string> LoadPathsFromConfig(const std::string& configPath) {
     
     while (std::getline(file, line)) {
         // Trim whitespace
-        line.erase(0, line.find_first_not_of(" \t\r\n"));
-        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        line = Trim(line);
         
         if (line.empty() || line[0] == ';') continue; // Skip empty lines and comments
         
@@ -286,14 +296,8 @@ std::vector<std::string> LoadPathsFromConfig(const std::string& configPath) {
         size_t equalPos = line.find('=');
         if (equalPos == std::string::npos) continue;
         
-        std::string key = line.substr(0, equalPos);
-        std::string value = line.substr(equalPos + 1);
-        
-        // Trim key and value
-        key.erase(0, key.find_first_not_of(" \t\r\n"));
-        key.erase(key.find_last_not_of(" \t\r\n") + 1);
-        value.erase(0, value.find_first_not_of(" \t\r\n"));
-        value.erase(value.find_last_not_of(" \t\r\n") + 1);
+        std::string key = Trim(line.substr(0, equalPos));
+        std::string value = Trim(line.substr(equalPos + 1));
         
         if (key == "MaxLauncherMenuItems") {
             maxItems = std::stoi(value);
