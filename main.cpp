@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <sstream>
 
 struct DriveMapping {
     const char* devicePath;
@@ -28,14 +29,6 @@ static const DriveMapping DRIVE_MAPPINGS[] = {
     {"\\Device\\Harddisk1\\Partition1", 'H', false},
     {"\\Device\\Harddisk1\\Partition6", 'I', false},
     {"\\Device\\Harddisk1\\Partition7", 'J', false},
-};
-
-static const std::string PATHS[] = {
-    "Apps",
-    "Dashboards",
-    "Games",
-    "Emulators",
-    "Homebrew"
 };
 
 void FindDefaultXBE(const std::string& path, std::vector<GameInfo>& games) {
@@ -243,6 +236,96 @@ bool MountHome()
     return nxMountDrive('Q', targetPath);
 }
 
+std::string Trim(const std::string& str) {
+    const std::string whitespace = " \t\r\n";
+    const auto start = str.find_first_not_of(whitespace);
+
+    if (start == std::string::npos) {
+        return ""; // String is all whitespace
+    }
+
+    const auto end = str.find_last_not_of(whitespace);
+    return str.substr(start, end - start + 1);
+}
+
+std::vector<std::string> SplitString(const std::string& str, char delimiter) {
+    std::vector<std::string> tokens;
+    std::string token;
+    std::istringstream tokenStream(str);
+
+    while (std::getline(tokenStream, token, delimiter)) {
+        // Trim whitespace
+        token = Trim(token);
+
+        if (!token.empty()) {
+            tokens.push_back(token);
+        }
+    }
+    return tokens;
+}
+
+std::vector<std::string> LoadPathsFromConfig(const std::string& configPath) {
+    std::vector<std::string> paths;
+    std::ifstream file(configPath);
+    
+    if (!file.is_open()) {
+        debugPrint("Failed to open config file: %s\n", configPath.c_str());
+        return paths;
+    }
+
+    std::string line;
+    std::string currentSection;
+    int maxItems = 8; // Default value
+    
+    while (std::getline(file, line)) {
+        // Trim whitespace
+        line = Trim(line);
+        
+        if (line.empty() || line[0] == ';') continue; // Skip empty lines and comments
+        
+        // Check for section
+        if (line[0] == '[' && line.back() == ']') {
+            currentSection = line.substr(1, line.size() - 2);
+            continue;
+        }
+        
+        // Only process lines in [LauncherMenu] section
+        if (currentSection != "LauncherMenu") continue;
+        
+        // Split line into key and value
+        size_t equalPos = line.find('=');
+        if (equalPos == std::string::npos) continue;
+        
+        std::string key = Trim(line.substr(0, equalPos));
+        std::string value = Trim(line.substr(equalPos + 1));
+        
+        if (key == "MaxLauncherMenuItems") {
+            maxItems = std::stoi(value);
+        } else if (strncmp(key.c_str(), "Path", strlen("Path")) == 0 && value.length() > 0) {
+            // Extract path index and verify it's within maxItems
+            int pathIndex = std::stoi(key.substr(4));
+            if (pathIndex >= 0 && pathIndex < maxItems) {
+                auto pathList = SplitString(value, ';');
+                for (const auto& path : pathList) {
+                    // Check for duplicates (case-insensitive)
+                    bool isDuplicate = false;
+                    for (const auto& existingPath : paths) {
+                        if (_stricmp(path.c_str(), existingPath.c_str()) == 0) {
+                            isDuplicate = true;
+                        }
+                    }
+
+                    if (!isDuplicate) {
+                        paths.push_back(path);
+                    }
+                }
+            }
+        }
+    }
+    
+    return paths;
+}
+
 int main(void) {
     std::vector<char> vecDrives;
     std::vector<GameInfo> titles;
@@ -269,6 +352,18 @@ int main(void) {
         }
     }
 
+    auto paths = LoadPathsFromConfig("C:\\UIX Configs\\config.ini");
+    if (paths.empty()) {
+        debugPrint("Couldn't enumerate paths from config.ini!\n");
+        Sleep(5000);
+        return 3;
+    }
+
+    debugPrint("Enumerated paths:\n");
+    for (auto& path : paths) {
+        debugPrint("%s\n", path.c_str());
+    }
+
     debugPrint("Enumerated drives:\n");
     for (auto& driveLetter : vecDrives) {
         debugPrint("%c:\\\n", driveLetter);
@@ -277,7 +372,7 @@ int main(void) {
     // Search for games in each drive
     for (auto& driveLetter : vecDrives) {
         debugPrint("Searching on drive %c...\n", driveLetter);
-        for (auto& path : PATHS) {
+        for (auto& path : paths) {
             std::string scanPath = std::string(1, driveLetter) + ":\\" + path;
             // debugPrint("Searching in %s\n", scanPath.c_str());
             FindDefaultXBE(scanPath, titles);
