@@ -9,6 +9,7 @@
 #include "xbe_parser.h"
 #include <string>
 #include <vector>
+#include <map>
 #include <fstream>
 #include <sstream>
 
@@ -30,6 +31,34 @@ static const DriveMapping DRIVE_MAPPINGS[] = {
     {"\\Device\\Harddisk1\\Partition6", 'I', false},
     {"\\Device\\Harddisk1\\Partition7", 'J', false},
 };
+
+std::string Trim(const std::string& str) {
+    const std::string whitespace = " \t\r\n";
+    const auto start = str.find_first_not_of(whitespace);
+
+    if (start == std::string::npos) {
+        return ""; // String is all whitespace
+    }
+
+    const auto end = str.find_last_not_of(whitespace);
+    return str.substr(start, end - start + 1);
+}
+
+std::vector<std::string> SplitString(const std::string& str, char delimiter) {
+    std::vector<std::string> tokens;
+    std::string token;
+    std::istringstream tokenStream(str);
+
+    while (std::getline(tokenStream, token, delimiter)) {
+        // Trim whitespace
+        token = Trim(token);
+
+        if (!token.empty()) {
+            tokens.push_back(token);
+        }
+    }
+    return tokens;
+}
 
 void FindDefaultXBE(const std::string& path, std::vector<GameInfo>& games) {
     WIN32_FIND_DATA findFileData;
@@ -110,18 +139,49 @@ void SaveIconsIni(const std::vector<GameInfo>& games, std::string path) {
 }
 
 void SaveTitleNamesIni(const std::vector<GameInfo>& games, std::string path) {
+    std::map<std::string, std::string> titlecache;
+
+    std::ifstream fin(path);
+    std::string linebuf;
+    if (fin.is_open() && fin.good()) {
+        // We already got a TitleNames.ini, so lets read it's entries
+
+        // Discard the first line "[default]"
+        std::getline(fin, linebuf);
+        if (linebuf.compare(0, strlen("[default]"), "[default]") != 0) {
+            debugPrint("ERR: Invalid start of TitleNames.ini");
+        }
+
+        // Read the rest of the ini file and store values in a map
+        while (std::getline(fin, linebuf)) {
+            if (linebuf.empty())
+                continue;
+
+            auto split = SplitString(linebuf, '=');
+            // Store key-value-pair in map
+            titlecache[Trim(split[0])] = Trim(split[1]);
+        }
+    }
+
+    // Add new entries to map
+    for (const auto& game : games) {
+        std::string dirName = GetDirectoryName(game.xbe_path);
+        if (!dirName.empty() && titlecache.find(dirName) == titlecache.end()) {
+            // Key is not known, add the entry
+            titlecache[dirName] = game.title;
+        }
+    }
+    
     std::ofstream f(path, std::ios::trunc);
     if (!f.is_open()) {
         debugPrint("Failed to open %s for writing!\n", path.c_str());
         return;
     }
-    
+
+    // Write out the final file
     f << "[default]" << std::endl;
-    for (const auto& game : games) {
-        std::string dirName = GetDirectoryName(game.xbe_path);
-        if (!dirName.empty()) {
-            f << dirName << "=" << game.title << std::endl;
-        }
+    for (const auto& title : titlecache) {
+        f << title.first << "=" << title.second << std::endl;
     }
 }
 
@@ -142,7 +202,7 @@ void SaveTitleMeta(const std::vector<GameInfo>& games) {
         /*
         // Check if files already exist
         std::ifstream fMetaExists(metaFilePath);
-        if (fMetaExists && fMetaExists.good()) {
+        if (fMetaExists.is_open() && fMetaExists.good()) {
             if (fMetaExists)
                 fMetaExists.close();
 
@@ -234,34 +294,6 @@ bool MountHome()
     *(filenameStr + 1) = '\0';
 
     return nxMountDrive('Q', targetPath);
-}
-
-std::string Trim(const std::string& str) {
-    const std::string whitespace = " \t\r\n";
-    const auto start = str.find_first_not_of(whitespace);
-
-    if (start == std::string::npos) {
-        return ""; // String is all whitespace
-    }
-
-    const auto end = str.find_last_not_of(whitespace);
-    return str.substr(start, end - start + 1);
-}
-
-std::vector<std::string> SplitString(const std::string& str, char delimiter) {
-    std::vector<std::string> tokens;
-    std::string token;
-    std::istringstream tokenStream(str);
-
-    while (std::getline(tokenStream, token, delimiter)) {
-        // Trim whitespace
-        token = Trim(token);
-
-        if (!token.empty()) {
-            tokens.push_back(token);
-        }
-    }
-    return tokens;
 }
 
 std::vector<std::string> LoadPathsFromConfig(const std::string& configPath) {
