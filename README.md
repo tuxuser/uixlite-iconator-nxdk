@@ -1,4 +1,7 @@
 
+> [!IMPORTANT]
+> Superseded by [UIXToolbox](https://github.com/OfficialTeamUIX/UIX-Lite/releases)
+
 # UIX-Lite Iconator (NXDK)
 
 Runs on the console and stores Icons / TitleImages for your installed titles at the appropriate location for UIX-Lite to recognize.
